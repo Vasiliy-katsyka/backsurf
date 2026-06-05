@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="manifest" href="manifest.json">
     <title>Backrooms: Endless Descent</title>
     <style>
         :root {
@@ -511,6 +512,9 @@
                         Watch for rolling service flatbeds and keep hydrated. You can leap onto moving flatbeds to bypass high barriers.
                     </p>
                     <button class="btn" id="start-btn" style="width: 100%;">START GAME</button>
+                    
+                    <!-- PWA Install Button (starts hidden) -->
+                    <button class="btn" id="pwa-install-btn" style="display: none; width: 100%; border-color: var(--vhs-yellow); color: var(--vhs-yellow); margin-top: 10px;">INSTALL GAME</button>
                 </div>
 
                 <!-- 2. RESEARCHERS / CHARACTER SELECTION PANEL -->
@@ -2589,6 +2593,59 @@
         document.addEventListener('touchmove', (e) => {
             if (state.running) e.preventDefault();
         }, { passive: false });
+
+        // --- PWA Service Worker & Install Event Handler ---
+        let deferredPrompt;
+        const pwaInstallBtn = document.getElementById('pwa-install-btn');
+        
+        // Capture the browser installation prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the default mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Save the event to trigger it on button click
+            deferredPrompt = e;
+            // Show the installation button in the main menu
+            if (pwaInstallBtn) {
+                pwaInstallBtn.style.display = 'block';
+            }
+        });
+        
+        if (pwaInstallBtn) {
+            pwaInstallBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                // Trigger the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user's decision
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('User accepted the PWA install prompt');
+                }
+                // Reset the prompt variable
+                deferredPrompt = null;
+                pwaInstallBtn.style.display = 'none';
+            });
+        }
+        
+        // Hide button once installed
+        window.addEventListener('appinstalled', () => {
+            console.log('App successfully installed');
+            if (pwaInstallBtn) {
+                pwaInstallBtn.style.display = 'none';
+            }
+        });
+        
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered with scope: ', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.error('Service Worker registration failed: ', error);
+                    });
+            });
+        }
     </script>
 </body>
 </html>
